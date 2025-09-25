@@ -21,6 +21,13 @@ stages:
               command: custom
               customCommand: run build
 
+          - task: Npm@1
+            inputs:
+              command: 'publish'
+              workingDir: './dist'
+              publishRegistry: 'useFeed'
+              publishFeed: 'ea13d37a-e46b-4751-ae29-0ca5d5b44c4c/b38911da-fcab-42ca-a2e1-2732fc90ed0e'
+
            
 
           
