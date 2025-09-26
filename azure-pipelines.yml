@@ -29,9 +29,104 @@
 #               publishRegistry: 'useFeed'
 #               publishFeed: 'ea13d37a-e46b-4751-ae29-0ca5d5b44c4c/b38911da-fcab-42ca-a2e1-2732fc90ed0e'
 
-           
 
-          
+trigger:
+  branches:
+    include:
+      - main
+pool:
+  vmImage: ubuntu-latest
 
+stages:
+    - stage: Build
+      jobs:
+          - job: build
+            steps:
+                - task: Npm@1
+                  displayName: npm install
+                  inputs:
+                      command: custom
+                      customCommand: install -D tailwindcss postcss autoprefixer
+                - task: Npm@1
+                  displayName: npm build
+                  inputs:
+                      command: custom
+                      customCommand: run build 
+                - task: Docker@2
+                  displayName: docker login 
+                  inputs:
+                      command: login
+                      containerRegistry: docker-svn
 
-                    
+                - task: Docker@2
+                  displayName: docker build
+                  inputs:
+                      command: build
+                      containerRegistry: docker-svn
+                      repository: singhdocker2110/nike-landing-page
+                      Dockerfile: '**/Dockerfile'
+                      buildContext: '.'
+                      tags:
+                        latest
+
+                - task: Docker@2
+                  displayName: docker push
+                  inputs:
+                    command: push
+                    containerRegistry: docker-svn
+                    repository: singhdocker2110/nike-landing-page
+                    tags: 
+                      latest
+
+    - stage: deploy
+      dependsOn: Build
+      jobs:
+          - job: deploy
+            steps:
+            - task: AzureCLI@2
+              displayName: azuredeploy2 aks
+              inputs:
+                  azureSubscription: nike-svc
+                  scriptType: bash
+                  scriptLocation: inlineScript
+                  inlineScript: |
+                    az aks get -credationals --resource-group Nik_group --name arun-cluster --overwrite-existing
+                    cat <<EOF | kubectl apply -f -
+                    apiVersion: apps/v1
+                    kind: Deployment
+                    metadata:
+                        name: nike-landing
+                        namespace: default
+                    spec:
+                        replicas: 2
+                        selector:
+                        matchLabels:
+                            app: nike-landing
+                        template:
+                        metadata:
+                            labels:
+                            app: nike-landing
+                        spec:
+                            containers:
+                            - name: nike-landing
+                            image: docker.io/singhdocker2110/nike-landing-page:latest
+                            imagePullPolicy: Always
+                            ports:
+                            - containerPort: 80
+                    ---
+                    apiVersion: v1
+                    kind: Service
+                    metadata:
+                        name: nike-landing-svc
+                        namespace: default
+                    spec:
+                        type: LoadBalancer
+                        selector:
+                        app: nike-landing
+                        ports:
+                        - port: 80
+                        targetPort: 80
+                    EOF
+                  
+                     
+                      
