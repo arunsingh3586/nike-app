@@ -88,7 +88,7 @@ stages:
         tags: |
           $(tag)
           latest
-
+   #docker build -t arun-app:v1 .
     - task: Docker@2
       displayName: Docker Push
       inputs:
@@ -98,7 +98,7 @@ stages:
         tags: |
           latest
           $(tag)
-
+# docker push dh-id/arun-app:v1
 # =========================
 # Stage 2: Deploy to AKS
 # =========================
@@ -118,6 +118,8 @@ stages:
         inlineScript: |
           echo "Get AKS Credentials"
           az aks get-credentials --resource-group $(aksResourceGroup) --name $(aksCluster) --overwrite-existing
+
+
 
           echo "Deploying to AKS from DockerHub"
           cat <<EOF | kubectl apply -f -
